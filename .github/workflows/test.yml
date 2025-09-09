@@ -1,0 +1,53 @@
+name: Test and Build
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [16.x, 18.x, 20.x]
+        
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        
+    - name: Install backend dependencies
+      run: npm install
+      
+    - name: Install frontend dependencies
+      run: cd client && npm install
+      
+    - name: Run backend tests
+      run: npm test --if-present
+      
+    - name: Run frontend tests
+      run: cd client && npm test --if-present -- --coverage --watchAll=false
+      
+    - name: Build frontend
+      run: cd client && npm run build
+      
+    - name: Check build artifacts
+      run: |
+        ls -la client/build/
+        echo "Build completed successfully"
+        
+    - name: Upload coverage reports
+      if: matrix.node-version == '18.x'
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./client/coverage/lcov.info
+        flags: frontend
+        name: frontend-coverage

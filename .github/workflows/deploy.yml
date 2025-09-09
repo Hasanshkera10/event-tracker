@@ -1,0 +1,69 @@
+name: Deploy to Hostinger
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: |
+        npm install
+        cd client && npm install
+        
+    - name: Build React app
+      run: |
+        cd client && npm run build
+        
+    - name: Run tests (if any)
+      run: |
+        npm test --if-present
+        cd client && npm test --if-present -- --coverage --watchAll=false
+        
+    - name: Create deployment package
+      run: |
+        mkdir -p deploy-package
+        cp -r server deploy-package/
+        cp -r client/build deploy-package/client/
+        cp package.json deploy-package/
+        cp ecosystem.config.js deploy-package/
+        cp .env.example deploy-package/.env
+        mkdir -p deploy-package/database
+        
+    - name: Deploy to Hostinger via FTP
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+      with:
+        server: ${{ secrets.HOSTINGER_FTP_HOST }}
+        username: ${{ secrets.HOSTINGER_FTP_USERNAME }}
+        password: ${{ secrets.HOSTINGER_FTP_PASSWORD }}
+        server-dir: public_html/
+        local-dir: ./deploy-package/
+        exclude: |
+          **/.git*
+          **/.git*/**
+          **/node_modules/**
+          **/.env
+          **/.env.*
+          
+    - name: Notify deployment status
+      if: always()
+      run: |
+        if [ ${{ job.status }} == 'success' ]; then
+          echo "✅ Deployment successful!"
+        else
+          echo "❌ Deployment failed!"
+        fi

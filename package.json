@@ -22,7 +22,7 @@
     "dotenv": "^16.3.1"
   },
   "devDependencies": {
-    "nodemon": "^3.0.1",
+    "nodemon": "^3.1.11",
     "concurrently": "^8.2.2"
   },
   "keywords": ["event", "tracking", "attendees", "management"],
